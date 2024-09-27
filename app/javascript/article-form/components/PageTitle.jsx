@@ -1,12 +1,18 @@
 import { h } from 'preact';
 import PropTypes from 'prop-types';
 import { OrganizationPicker } from '../../organization/OrganizationPicker';
+import { locale } from '../../utilities/locale';
 
-export const PageTitle = ({ organizations, organizationId, onToggle }) => {
+export const PageTitle = ({
+  organizations,
+  organizationId,
+  onToggle,
+  previewLoading,
+}) => {
   return (
     <div className="crayons-field__label flex items-center flex-1">
       <span className="hidden s:inline-block mr-2 whitespace-nowrap">
-        Create Post
+        {previewLoading ? locale('views.editor.loading_preview') : locale('views.editor.create')}
       </span>
       {organizations && organizations.length > 0 && (
         <div>
@@ -29,6 +35,7 @@ PageTitle.propTypes = {
   organizations: PropTypes.arrayOf(PropTypes.string).isRequired,
   organizationId: PropTypes.string,
   onToggle: PropTypes.func.isRequired,
+  previewLoading: PropTypes.bool.isRequired,
 };
 
 PageTitle.displayName = 'Organization';

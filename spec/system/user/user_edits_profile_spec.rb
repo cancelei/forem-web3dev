@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "User edits their profile", type: :system do
+RSpec.describe "User edits their profile" do
   let(:user) { create(:user) }
   let!(:profile_field_group) { create(:profile_field_group, name: "Ice Cream") }
   let!(:left_sidebar_profile_field) do
@@ -29,8 +29,8 @@ RSpec.describe "User edits their profile", type: :system do
       expect(page).to have_text("Username is invalid")
     end
 
-    it "makes the 'Save Button' footer sticky once a field is filled in", js: true do
-      expect(page).not_to have_css(".sticky")
+    it "makes the 'Save Button' footer sticky once a field is filled in", :js do
+      expect(page).to have_no_css(".sticky")
 
       fill_in "user[username]", with: "sloan"
 
@@ -42,13 +42,12 @@ RSpec.describe "User edits their profile", type: :system do
 
   describe "editing admin created profile fields" do
     before do
-      allow(FeatureFlag).to receive(:enabled?).with(:profile_admin).and_return(true)
       Profile.refresh_attributes!
     end
 
     it "renders profile fields" do
-      expect(page).to have_text(left_sidebar_profile_field.attribute_name.titleize)
-      expect(page).to have_text(header_profile_field.attribute_name.titleize)
+      expect(page).to have_text(left_sidebar_profile_field.label.titleize)
+      expect(page).to have_text(header_profile_field.label.titleize)
     end
 
     it "reflects set profile fields in the interface" do
@@ -58,15 +57,15 @@ RSpec.describe "User edits their profile", type: :system do
 
       visit "/#{user.username}"
 
-      expect(page).not_to have_text("cthulhu")
+      expect(page).to have_no_text("cthulhu")
 
       within(".crayons-layout__sidebar-left") do
-        expect(page).to have_text(left_sidebar_profile_field.attribute_name.titleize)
+        expect(page).to have_text(left_sidebar_profile_field.label.titleize)
         expect(page).to have_text("chocolate")
       end
 
       within(".profile-header") do
-        expect(page).to have_text(header_profile_field.attribute_name.titleize)
+        expect(page).to have_text(header_profile_field.label.titleize)
         expect(page).to have_text("pistachio")
       end
     end

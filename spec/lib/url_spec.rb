@@ -99,7 +99,7 @@ RSpec.describe URL, type: :lib do
     it "returns the correct URL for a tag with a non-ASCII name" do
       # Due to validations we can't trivially create a tag with a non-ASCII name
       # so we just create something that quacks like one.
-      tag = instance_double("Tag", name: "histórico")
+      tag = instance_double(Tag, name: "histórico")
       expect(described_class.tag(tag)).to eq("https://dev.to/t/hist%C3%B3rico")
     end
   end
@@ -125,7 +125,7 @@ RSpec.describe URL, type: :lib do
     # names in these specs.
     it "returns the correct URL for an image name with no host" do
       image_url_regex = %r{
-        #{ApplicationConfig["APP_PROTOCOL"]} # https://
+        #{ApplicationConfig['APP_PROTOCOL']} # https://
         #{Settings::General.app_domain}/            # dev.to
         assets/                              # assets/ directory
         #{image_name}-                       # social-media-cover

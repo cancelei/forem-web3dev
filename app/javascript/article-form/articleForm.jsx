@@ -1,9 +1,10 @@
-/* global Runtime */
 import { h, Component } from 'preact';
 import PropTypes from 'prop-types';
 import linkState from 'linkstate';
 import postscribe from 'postscribe';
+import moment from 'moment';
 import { KeyboardShortcuts } from '../shared/components/useKeyboardShortcuts';
+import { locale } from '../utilities/locale';
 import { embedGists } from '../utilities/gist';
 import { submitArticle, previewArticle } from './actions';
 import { EditorActions, Form, Header, Help, Preview } from './components';
@@ -14,11 +15,12 @@ import {
   noLevelOneHeadingsRule,
   headingIncrement,
 } from '@utilities/markdown/markdownLintCustomRules';
+import { getOSKeyboardModifierKeyString } from '@utilities/runtime';
 
 /* global activateRunkitTags */
 
 /*
-  Although the state fields: id, description, canonicalUrl, series, allSeries and
+  Although the state fields: id, description, canonicalUrl, publishedAtDate, publishedAtTime, series, allSeries and
   editing are not used in this file, they are important to the
   editor.
 */
@@ -63,6 +65,9 @@ export class ArticleForm extends Component {
     article: PropTypes.string.isRequired,
     organizations: PropTypes.string,
     siteLogo: PropTypes.string.isRequired,
+    schedulingEnabled: PropTypes.bool.isRequired,
+    coverImageHeight: PropTypes.string.isRequired,
+    coverImageCrop: PropTypes.string.isRequired,
   };
 
   static defaultProps = {
@@ -71,7 +76,14 @@ export class ArticleForm extends Component {
 
   constructor(props) {
     super(props);
-    const { article, version, siteLogo } = this.props;
+    const {
+      article,
+      version,
+      siteLogo,
+      schedulingEnabled,
+      coverImageHeight,
+      coverImageCrop,
+    } = this.props;
     let { organizations } = this.props;
     this.article = JSON.parse(article);
     organizations = organizations ? JSON.parse(organizations) : null;
@@ -95,6 +107,16 @@ export class ArticleForm extends Component {
           }
         : {};
 
+    this.publishedAtTime = '';
+    this.publishedAtDate = '';
+    this.publishedAtWas = '';
+
+    if (this.article.published_at) {
+      this.publishedAtWas = moment(this.article.published_at);
+      this.publishedAtTime = this.publishedAtWas.format('HH:mm');
+      this.publishedAtDate = this.publishedAtWas.format('YYYY-MM-DD');
+    }
+
     this.state = {
       formKey: new Date().toISOString(),
       id: this.article.id || null, // eslint-disable-line react/no-unused-state
@@ -102,12 +124,18 @@ export class ArticleForm extends Component {
       tagList: this.article.cached_tag_list || '',
       description: '', // eslint-disable-line react/no-unused-state
       canonicalUrl: this.article.canonical_url || '', // eslint-disable-line react/no-unused-state
+      publishedAtTime: this.publishedAtTime,
+      publishedAtDate: this.publishedAtDate,
+      publishedAtWas: this.publishedAtWas,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '', // eslint-disable-line react/no-unused-state
       series: this.article.series || '', // eslint-disable-line react/no-unused-state
       allSeries: this.article.all_series || [], // eslint-disable-line react/no-unused-state
       bodyMarkdown: this.article.body_markdown || '',
       published: this.article.published || false,
+      schedulingEnabled,
       previewShowing: false,
-      previewResponse: '',
+      previewLoading: false,
+      previewResponse: { processed_html: '' },
       submitting: false,
       editing: this.article.id !== null, // eslint-disable-line react/no-unused-state
       mainImage: this.article.main_image || null,
@@ -118,6 +146,8 @@ export class ArticleForm extends Component {
       updatedAt: this.article.updated_at,
       version,
       siteLogo,
+      coverImageHeight,
+      coverImageCrop,
       helpFor: null,
       helpPosition: null,
       isModalOpen: false,
@@ -137,7 +167,7 @@ export class ArticleForm extends Component {
   componentDidUpdate() {
     const { previewResponse } = this.state;
 
-    if (previewResponse) {
+    if (previewResponse?.processed_html) {
       embedGists(this.formElement);
       this.constructor.handleRunkitPreview();
       this.constructor.handleAsciinemaPreview();
@@ -161,11 +191,13 @@ export class ArticleForm extends Component {
 
   setCommonProps = ({
     previewShowing = false,
+    previewLoading = false,
     helpFor = null,
     helpPosition = null,
   }) => {
     return {
       previewShowing,
+      previewLoading,
       helpFor,
       helpPosition,
     };
@@ -179,6 +211,7 @@ export class ArticleForm extends Component {
         ...this.setCommonProps({}),
       });
     } else {
+      this.showLoadingPreview();
       previewArticle(bodyMarkdown, this.showPreview, this.failedPreview);
     }
   };
@@ -221,10 +254,22 @@ export class ArticleForm extends Component {
     }
   };
 
+  showLoadingPreview = () => {
+    this.setState({
+      ...this.setCommonProps({
+        previewShowing: true,
+        previewLoading: true,
+      }),
+    });
+  };
+
   showPreview = (response) => {
     this.fetchMarkdownLint();
     this.setState({
-      ...this.setCommonProps({ previewShowing: true }),
+      ...this.setCommonProps({
+        previewShowing: true,
+        previewLoading: false,
+      }),
       previewResponse: response,
       errors: null,
     });
@@ -237,6 +282,7 @@ export class ArticleForm extends Component {
 
   failedPreview = (response) => {
     this.setState({
+      ...this.setCommonProps({ previewLoading: false }),
       errors: response,
       submitting: false,
     });
@@ -314,11 +360,15 @@ export class ArticleForm extends Component {
       tagList: this.article.cached_tag_list || '',
       description: '', // eslint-disable-line react/no-unused-state
       canonicalUrl: this.article.canonical_url || '', // eslint-disable-line react/no-unused-state
+      publishedAtTime: this.publishedAtTime,
+      publishedAtDate: this.publishedAtDate,
+      publishedAtWas: this.publishedAtWas,
       series: this.article.series || '', // eslint-disable-line react/no-unused-state
       allSeries: this.article.all_series || [], // eslint-disable-line react/no-unused-state
       bodyMarkdown: this.article.body_markdown || '',
       published: this.article.published || false,
       previewShowing: false,
+      previewLoading: false,
       previewResponse: '',
       submitting: false,
       editing: this.article.id !== null, // eslint-disable-line react/no-unused-state
@@ -359,14 +409,16 @@ export class ArticleForm extends Component {
     }
   };
 
-  switchHelpContext = ({ target }) => {
-    this.setState({
-      ...this.setCommonProps({
-        helpFor: target.id,
-        helpPosition: target.getBoundingClientRect().y,
-      }),
-    });
-  };
+  switchHelpContext = (event, override = null) => {
+    if (!this.state.previewShowing) {
+      const id = override || event.target.id;
+      this.setState({
+        ...this.setCommonProps({
+          helpFor: id,
+          helpPosition: event.target.getBoundingClientRect().y,
+        }),
+      });
+  }};
 
   render() {
     const {
@@ -374,8 +426,13 @@ export class ArticleForm extends Component {
       tagList,
       bodyMarkdown,
       published,
+      publishedAtTime,
+      publishedAtDate,
+      publishedAtWas,
       previewShowing,
+      previewLoading,
       previewResponse,
+      schedulingEnabled,
       submitting,
       organizations,
       organizationId,
@@ -388,6 +445,8 @@ export class ArticleForm extends Component {
       siteLogo,
       markdownLintErrors,
       formKey,
+      coverImageHeight,
+      coverImageCrop,
     } = this.state;
 
     return (
@@ -399,10 +458,13 @@ export class ArticleForm extends Component {
         className="crayons-article-form"
         onSubmit={this.onSubmit}
         onInput={this.toggleEdit}
+        coverImageHeight={coverImageHeight}
+        coverImageCrop={coverImageCrop}
         aria-label="Edit post"
       >
         <Header
           onPreview={this.fetchPreview}
+          previewLoading={previewLoading}
           previewShowing={previewShowing}
           organizations={organizations}
           organizationId={organizationId}
@@ -411,8 +473,14 @@ export class ArticleForm extends Component {
           displayModal={() => this.showModal(true)}
         />
 
-        {previewShowing ? (
+        <span aria-live="polite" className="screen-reader-only">
+          {previewLoading ? 'Loading preview' : null}
+          {previewShowing && !previewLoading ? 'Preview loaded' : null}
+        </span>
+
+        {previewShowing || previewLoading ? (
           <Preview
+            previewLoading={previewLoading}
             previewResponse={previewResponse}
             articleState={this.state}
             errors={errors}
@@ -433,6 +501,8 @@ export class ArticleForm extends Component {
             onMainImageUrlChange={this.handleMainImageUrlChange}
             errors={errors}
             switchHelpContext={this.switchHelpContext}
+            coverImageHeight={coverImageHeight}
+            coverImageCrop={coverImageCrop}
           />
         )}
 
@@ -445,19 +515,16 @@ export class ArticleForm extends Component {
         {this.state.isModalOpen && (
           <Modal
             size="s"
-            title="You have unsaved changes"
+            title={locale('views.editor.close.unsaved_changes')}
             onClose={() => this.showModal(false)}
           >
-            <p>
-              You've made changes to your post. Do you want to navigate to leave
-              this page?
-            </p>
+            <p>{locale('views.editor.close.made_changes')}</p>
             <div className="pt-4">
               <Button className="mr-2" variant="danger" url="/" tagName="a">
-                Yes, leave the page
+                {locale('views.editor.close.yes_leave')}
               </Button>
               <Button variant="secondary" onClick={() => this.showModal(false)}>
-                No, keep editing
+                {locale('views.editor.close.no_keep')}
               </Button>
             </div>
           </Modal>
@@ -465,6 +532,10 @@ export class ArticleForm extends Component {
 
         <EditorActions
           published={published}
+          publishedAtTime={publishedAtTime}
+          publishedAtDate={publishedAtDate}
+          publishedAtWas={publishedAtWas}
+          schedulingEnabled={schedulingEnabled}
           version={version}
           onPublish={this.onPublish}
           onSaveDraft={this.onSaveDraft}
@@ -473,11 +544,13 @@ export class ArticleForm extends Component {
           passedData={this.state}
           onConfigChange={this.handleConfigChange}
           submitting={submitting}
+          previewLoading={previewLoading}
+          switchHelpContext={this.switchHelpContext}
         />
 
         <KeyboardShortcuts
           shortcuts={{
-            [`${Runtime.getOSKeyboardModifierKeyString()}+shift+KeyP`]:
+            [`${getOSKeyboardModifierKeyString()}+shift+KeyP`]:
               this.fetchPreview,
           }}
         />

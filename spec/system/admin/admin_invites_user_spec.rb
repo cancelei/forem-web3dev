@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Admin invites user", type: :system do
+RSpec.describe "Admin invites user" do
   let(:admin) { create(:user, :super_admin) }
 
   before do
@@ -19,8 +19,8 @@ RSpec.describe "Admin invites user", type: :system do
     end
 
     it "shows a banner" do
-      message = "SMTP settings are required so that your Forem can send emails. If you wish to send invites, "\
-                "email digests and activity notifications you will need to specify which email host will relay those "\
+      message = "SMTP settings are required so that your Forem can send emails. If you wish to send invites, " \
+                "email digests and activity notifications you will need to specify which email host will relay those " \
                 "messages for you."
       expect(page).to have_content(message)
     end
@@ -34,12 +34,11 @@ RSpec.describe "Admin invites user", type: :system do
     end
 
     it "does not contain any for fields" do
-      expect(page).not_to have_field "Email"
-      expect(page).not_to have_field "Name"
+      expect(page).to have_no_field "Email"
     end
 
     it "does not contain any submit buttons" do
-      expect(page).not_to have_button "Invite User"
+      expect(page).to have_no_button "Invite User"
     end
   end
 
@@ -49,9 +48,8 @@ RSpec.describe "Admin invites user", type: :system do
       visit new_admin_invitation_path
     end
 
-    it "shows the input fields" do
+    it "shows the input field" do
       expect(page).to have_field "Email"
-      expect(page).to have_field "Name"
     end
 
     it "shows the submit button" do

@@ -20,7 +20,7 @@ RSpec.describe DataUpdateWorker, type: :worker do
 
       expect do
         worker.perform(script.id)
-      end.to change(DataUpdateScript, :count).by(0)
+      end.not_to change(DataUpdateScript, :count)
 
       updated_script = DataUpdateScript.find(script.id)
       expect(updated_script.status).to eq("succeeded")
@@ -34,11 +34,11 @@ RSpec.describe DataUpdateWorker, type: :worker do
       end.to change(DataUpdateScript, :count).by(2)
     end
 
-    it "will not run a script that has already been run" do
+    it "does not run a script that has already been run" do
       worker.perform
       expect do
         worker.perform
-      end.to change(DataUpdateScript, :count).by(0)
+      end.not_to change(DataUpdateScript, :count)
     end
 
     it "updates DataUpdateScript model" do

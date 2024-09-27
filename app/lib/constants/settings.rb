@@ -5,9 +5,9 @@ module Constants
       Customization
       Notifications
       Account
-      Billing
       Organization
       Extensions
+      Metamask
     ].freeze
   end
 end
